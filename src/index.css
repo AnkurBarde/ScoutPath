@@ -1,0 +1,12 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8f5e9 100%);
+  min-height: 100vh;
+  color: #2c3e50;
+}
