@@ -1,9 +1,17 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
+import RankTracker from './pages/RankTracker'
+import Navbar from './components/Navbar'
+
 function App() {
   return (
-    <div>
-      <h1>ScoutPath</h1>
-      <p>Welcome to your Scout progress tracker.</p>
-    </div>
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/rank-tracker" element={<RankTracker />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
