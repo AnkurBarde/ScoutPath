@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const EAGLE_REQUIRED = [
   'First Aid', 'Citizenship in the Community', 'Citizenship in the Nation',
@@ -63,9 +63,10 @@ const BADGE_EMOJI = {
   'Reading': '📚', 'Rifle Shooting': '🎯', 'Robotics': '🤖', 'Rowing': '🚣',
   'Scholarship': '🎓', 'Scuba Diving': '🤿', 'Shotgun Shooting': '🎯',
   'Skating': '⛸️', 'Small-Boat Sailing': '⛵', 'Snow Sports': '⛷️',
-  'Space Exploration': '🚀', 'Sports': '🏅', 'Theater': '🎭', 'Veterinary Medicine': '🐾',
-  'Weather': '🌤️', 'Welding': '🔧', 'Wilderness Survival': '🏕️', 'Wood Carving': '🪵',
-  'Woodwork': '🔨', 'Artificial Intelligence': '🤖', 'Cybersecurity': '🔒',
+  'Space Exploration': '🚀', 'Sports': '🏅', 'Theater': '🎭',
+  'Veterinary Medicine': '🐾', 'Weather': '🌤️', 'Welding': '🔧',
+  'Wilderness Survival': '🏕️', 'Wood Carving': '🪵', 'Woodwork': '🔨',
+  'Artificial Intelligence': '🤖', 'Cybersecurity': '🔒',
   'Digital Technology': '📱', 'Entrepreneurship': '💼',
 }
 
@@ -79,6 +80,206 @@ function isEagleRequired(name) {
 
 function getChoiceGroup(name) {
   return CHOICE_GROUPS.find(g => g.badges.includes(name)) || null
+}
+
+function BadgeChatbot({ earnedBadges, inProgressBadges }) {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: 'Hey! Ask me anything about merit badges — which ones are easiest, most fun, best for Eagle, or how to complete a specific one.' }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, open])
+
+  const send = async () => {
+    if (!input.trim() || loading) return
+
+    const userMsg = { role: 'user', content: input.trim() }
+    const context = `(Scout context: earned badges: ${earnedBadges.join(', ') || 'none yet'}; in progress: ${inProgressBadges.join(', ') || 'none'})`
+
+    const apiMessages = [
+      ...messages
+        .filter((_, i) => i > 0)
+        .map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: `${context}\n\n${input.trim()}` }
+    ]
+
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages })
+      })
+      const data = await response.json()
+      const text = data.content?.find(b => b.type === 'text')?.text
+      if (text) {
+        setMessages(prev => [...prev, { role: 'assistant', content: text }])
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Try again.' }])
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Check your connection.' }])
+    }
+
+    setLoading(false)
+  }
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      send()
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          backgroundColor: '#2c3e50',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '24px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'transform 0.2s ease'
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        {open ? '✕' : '🤖'}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'fixed',
+          bottom: '90px',
+          right: '24px',
+          width: '340px',
+          height: '480px',
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 1000,
+          overflow: 'hidden',
+          border: '1.5px solid #eee'
+        }}>
+          <div style={{
+            backgroundColor: '#2c3e50',
+            padding: '16px 18px',
+            color: 'white'
+          }}>
+            <div style={{ fontWeight: '800', fontSize: '15px' }}>🤖 Badge Advisor</div>
+            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>Ask me anything about merit badges</div>
+          </div>
+
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            {messages.map((msg, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
+              }}>
+                <div style={{
+                  maxWidth: '80%',
+                  padding: '10px 14px',
+                  borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  backgroundColor: msg.role === 'user' ? '#2c3e50' : '#f0f4f8',
+                  color: msg.role === 'user' ? 'white' : '#2c3e50',
+                  fontSize: '13px',
+                  lineHeight: '1.5',
+                  fontWeight: '500'
+                }}>
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: '16px 16px 16px 4px',
+                  backgroundColor: '#f0f4f8',
+                  fontSize: '13px',
+                  color: '#999'
+                }}>
+                  Thinking...
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div style={{
+            padding: '12px',
+            borderTop: '1.5px solid #eee',
+            display: 'flex',
+            gap: '8px'
+          }}>
+            <input
+              type="text"
+              placeholder="Ask about merit badges..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1.5px solid #ddd',
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+            <button
+              onClick={send}
+              disabled={!input.trim() || loading}
+              style={{
+                padding: '10px 14px',
+                backgroundColor: !input.trim() || loading ? '#ccc' : '#2c3e50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: '800',
+                fontSize: '13px'
+              }}
+            >
+              →
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function BadgeManager() {
@@ -113,22 +314,16 @@ export default function BadgeManager() {
   }
 
   const toggleReq = (badge, reqIndex) => {
-    const key = badge
-    const current = badgeReqs[key] || []
+    const current = badgeReqs[badge] || []
     const updated = current.includes(reqIndex)
       ? current.filter(i => i !== reqIndex)
       : [...current, reqIndex]
-    setBadgeReqs(prev => ({ ...prev, [key]: updated }))
+    setBadgeReqs(prev => ({ ...prev, [badge]: updated }))
   }
 
   const setReqCount = (badge, count) => {
-    setBadgeReqs(prev => ({
-      ...prev,
-      [`${badge}_count`]: parseInt(count) || 0
-    }))
+    setBadgeReqs(prev => ({ ...prev, [`${badge}_count`]: parseInt(count) || 0 }))
   }
-
-  const earnedEagleRequired = EAGLE_REQUIRED.filter(b => badgeStatus[b] === 'earned')
 
   const choiceGroupMet = (group) => group.badges.some(b => badgeStatus[b] === 'earned')
 
@@ -149,10 +344,11 @@ export default function BadgeManager() {
   ].filter(Boolean).length
 
   const totalEarned = ALL_BADGES.filter(b => badgeStatus[b] === 'earned').length
-  const electivesEarned = ALL_BADGES.filter(b =>
-    badgeStatus[b] === 'earned' && !isEagleRequired(b)
-  ).length
+  const electivesEarned = ALL_BADGES.filter(b => badgeStatus[b] === 'earned' && !isEagleRequired(b)).length
   const electivesNeeded = Math.max(0, 8 - electivesEarned)
+
+  const earnedBadgesList = ALL_BADGES.filter(b => badgeStatus[b] === 'earned')
+  const inProgressBadgesList = ALL_BADGES.filter(b => badgeStatus[b] === 'in-progress')
 
   const getStatusColor = (status) => {
     if (status === 'earned') return '#2ecc71'
@@ -324,7 +520,6 @@ export default function BadgeManager() {
               overflow: 'hidden',
               transition: 'all 0.2s ease'
             }}>
-              {/* Card Header */}
               <div
                 onClick={() => setExpandedBadge(isExpanded ? null : name)}
                 style={{ padding: '16px 14px', cursor: 'pointer' }}
@@ -367,7 +562,6 @@ export default function BadgeManager() {
                 </button>
               </div>
 
-              {/* Expanded View */}
               {isExpanded && (
                 <div style={{
                   padding: '16px',
@@ -375,8 +569,6 @@ export default function BadgeManager() {
                   backgroundColor: '#fafafa'
                 }}>
                   <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-
-                    {/* Requirement Tracker */}
                     <div style={{ flex: 1, minWidth: '240px' }}>
                       <h3 style={{ fontWeight: '800', fontSize: '15px', marginBottom: '12px' }}>
                         Requirement Tracker
@@ -435,7 +627,6 @@ export default function BadgeManager() {
                       )}
                     </div>
 
-                    {/* Date & Status */}
                     <div style={{ minWidth: '200px' }}>
                       <h3 style={{ fontWeight: '800', fontSize: '15px', marginBottom: '12px' }}>
                         Details
@@ -499,6 +690,11 @@ export default function BadgeManager() {
           No badges match your search or filter.
         </div>
       )}
+
+      <BadgeChatbot
+        earnedBadges={earnedBadgesList}
+        inProgressBadges={inProgressBadgesList}
+      />
     </div>
   )
 }
