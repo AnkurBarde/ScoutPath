@@ -74,12 +74,51 @@ function getBadgeEmoji(name) {
   return BADGE_EMOJI[name] || '🎖️'
 }
 
+function getBadgeSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/ /g, '-')
+}
+
 function isEagleRequired(name) {
   return EAGLE_REQUIRED.includes(name)
 }
 
 function getChoiceGroup(name) {
   return CHOICE_GROUPS.find(g => g.badges.includes(name)) || null
+}
+
+function BadgeImage({ name }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const slug = getBadgeSlug(name)
+
+  if (imgFailed) {
+    return (
+      <div style={{
+        fontSize: '36px',
+        height: '64px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        {getBadgeEmoji(name)}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      height: '64px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <img
+        src={`/badges/${slug}.jpg`}
+        alt={name}
+        onError={() => setImgFailed(true)}
+        style={{ width: '60px', height: '60px', objectFit: 'contain' }}
+      />
+    </div>
+  )
 }
 
 function BadgeChatbot({ earnedBadges, inProgressBadges }) {
@@ -190,7 +229,9 @@ function BadgeChatbot({ earnedBadges, inProgressBadges }) {
             color: 'white'
           }}>
             <div style={{ fontWeight: '800', fontSize: '15px' }}>🤖 Badge Advisor</div>
-            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>Ask me anything about merit badges</div>
+            <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>
+              Ask me anything about merit badges
+            </div>
           </div>
 
           <div style={{
@@ -209,7 +250,9 @@ function BadgeChatbot({ earnedBadges, inProgressBadges }) {
                 <div style={{
                   maxWidth: '80%',
                   padding: '10px 14px',
-                  borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  borderRadius: msg.role === 'user'
+                    ? '16px 16px 4px 16px'
+                    : '16px 16px 16px 4px',
                   backgroundColor: msg.role === 'user' ? '#2c3e50' : '#f0f4f8',
                   color: msg.role === 'user' ? 'white' : '#2c3e50',
                   fontSize: '13px',
@@ -303,7 +346,8 @@ export default function BadgeManager() {
 
   const cycleStatus = (name) => {
     const current = badgeStatus[name] || 'not-started'
-    const next = current === 'not-started' ? 'in-progress' : current === 'in-progress' ? 'earned' : 'not-started'
+    const next = current === 'not-started' ? 'in-progress'
+      : current === 'in-progress' ? 'earned' : 'not-started'
     setBadgeStatus(prev => ({ ...prev, [name]: next }))
     if (next === 'earned' && !badgeDates[name]) {
       setBadgeDates(prev => ({ ...prev, [name]: new Date().toISOString().split('T')[0] }))
@@ -344,9 +388,10 @@ export default function BadgeManager() {
   ].filter(Boolean).length
 
   const totalEarned = ALL_BADGES.filter(b => badgeStatus[b] === 'earned').length
-  const electivesEarned = ALL_BADGES.filter(b => badgeStatus[b] === 'earned' && !isEagleRequired(b)).length
+  const electivesEarned = ALL_BADGES.filter(b =>
+    badgeStatus[b] === 'earned' && !isEagleRequired(b)
+  ).length
   const electivesNeeded = Math.max(0, 8 - electivesEarned)
-
   const earnedBadgesList = ALL_BADGES.filter(b => badgeStatus[b] === 'earned')
   const inProgressBadgesList = ALL_BADGES.filter(b => badgeStatus[b] === 'in-progress')
 
@@ -395,7 +440,9 @@ export default function BadgeManager() {
 
   return (
     <div style={{ padding: '30px 20px', maxWidth: '900px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>Merit Badge Manager</h1>
+      <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>
+        Merit Badge Manager
+      </h1>
 
       {/* Summary */}
       <div style={{
@@ -417,8 +464,12 @@ export default function BadgeManager() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: stat.color }}>{stat.value}</div>
-            <div style={{ fontSize: '12px', color: '#999', fontWeight: '600', marginTop: '4px' }}>{stat.label}</div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: stat.color }}>
+              {stat.value}
+            </div>
+            <div style={{ fontSize: '12px', color: '#999', fontWeight: '600', marginTop: '4px' }}>
+              {stat.label}
+            </div>
           </div>
         ))}
       </div>
@@ -427,7 +478,9 @@ export default function BadgeManager() {
       <div style={{ marginBottom: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
           <span style={{ fontWeight: '700', fontSize: '14px' }}>Eagle Merit Badge Progress</span>
-          <span style={{ fontWeight: '700', fontSize: '14px', color: '#2ecc71' }}>{Math.round((Math.min(totalEarned, 21) / 21) * 100)}%</span>
+          <span style={{ fontWeight: '700', fontSize: '14px', color: '#2ecc71' }}>
+            {Math.round((Math.min(totalEarned, 21) / 21) * 100)}%
+          </span>
         </div>
         <div style={{ backgroundColor: '#eee', borderRadius: '10px', height: '12px' }}>
           <div style={{
@@ -524,12 +577,19 @@ export default function BadgeManager() {
                 onClick={() => setExpandedBadge(isExpanded ? null : name)}
                 style={{ padding: '16px 14px', cursor: 'pointer' }}
               >
-                <div style={{ fontSize: '32px', marginBottom: '8px', textAlign: 'center' }}>
-                  {getBadgeEmoji(name)}
-                </div>
-                <div style={{ fontWeight: '700', fontSize: '13px', textAlign: 'center', marginBottom: '8px', color: '#2c3e50' }}>
+                <BadgeImage name={name} />
+
+                <div style={{
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  textAlign: 'center',
+                  marginBottom: '8px',
+                  marginTop: '8px',
+                  color: '#2c3e50'
+                }}>
                   {name}
                 </div>
+
                 {isEagleRequired(name) && (
                   <div style={{
                     fontSize: '10px',
@@ -543,6 +603,7 @@ export default function BadgeManager() {
                     {group ? `Eagle Required (${group.label})` : 'Eagle Required'}
                   </div>
                 )}
+
                 <button
                   onClick={e => { e.stopPropagation(); cycleStatus(name) }}
                   style={{
@@ -632,7 +693,13 @@ export default function BadgeManager() {
                         Details
                       </h3>
                       <div style={{ marginBottom: '12px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#666', display: 'block', marginBottom: '4px' }}>
+                        <label style={{
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          color: '#666',
+                          display: 'block',
+                          marginBottom: '4px'
+                        }}>
                           Status:
                         </label>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -652,14 +719,21 @@ export default function BadgeManager() {
                                 color: status === s ? getStatusTextColor(s) : '#666'
                               }}
                             >
-                              {s === 'not-started' ? 'Not Started' : s === 'in-progress' ? 'In Progress' : 'Earned'}
+                              {s === 'not-started' ? 'Not Started'
+                                : s === 'in-progress' ? 'In Progress' : 'Earned'}
                             </button>
                           ))}
                         </div>
                       </div>
                       {status === 'earned' && (
                         <div>
-                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#666', display: 'block', marginBottom: '4px' }}>
+                          <label style={{
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            color: '#666',
+                            display: 'block',
+                            marginBottom: '4px'
+                          }}>
                             Date Earned:
                           </label>
                           <input
