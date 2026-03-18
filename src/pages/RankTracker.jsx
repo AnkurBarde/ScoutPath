@@ -1,6 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const ranks = ['Scout', 'Tenderfoot', 'Second Class', 'First Class', 'Star', 'Life', 'Eagle']
+
+const timeRequirements = {
+  'Star1': { months: 4, label: '4 months active as First Class Scout' },
+  'Star5': { months: 4, label: '4 months in a leadership position' },
+  'Life1': { months: 6, label: '6 months active as Star Scout' },
+  'Life5': { months: 6, label: '6 months in a leadership position' },
+  'Eagle1': { months: 6, label: '6 months active as Life Scout' },
+  'Eagle4': { months: 6, label: '6 months in a leadership position' },
+}
 
 const requirements = {
   Scout: [
@@ -144,8 +153,8 @@ const requirements = {
     { id: '2', text: 'As a Star Scout, demonstrate Scout spirit by living the Scout Oath and Scout Law. Tell how you have done your duty to God and how you have lived the Scout Oath and Scout Law in your everyday life.' },
     { id: '3', text: 'Earn five more merit badges (so that you have 11 in all), including any three additional badges from the required list for Eagle. You may choose any of the 17 merit badges on the required list for Eagle to fulfill this requirement. See Eagle rank requirement 3 for this list.' },
     { id: '4', text: 'While a Star Scout, participate in six hours of service through one or more service projects approved by your Scoutmaster. At least three hours of this service must be conservation-related.' },
-    { id: '5', text: "While a Star Scout, serve actively in your troop for six months in one or more of the following troop positions of responsibility (or carry out a Scoutmaster-approved leadership project to help the troop): Patrol leader, assistant senior patrol leader, senior patrol leader, troop guide, Order of the Arrow troop representative, den chief, scribe, librarian, historian, quartermaster, bugler, junior assistant Scoutmaster, chaplain aide, instructor, webmaster, or outdoor ethics guide." },
-    { id: '6', text: "While a Star Scout, use the Teaching EDGE method to teach another Scout (preferably younger than you) the skills from ONE of the following choices, so that the Scout is prepared to pass those requirements to their Scoutmaster's satisfaction: (a) Tenderfoot 4a and 4b (first aid), (b) Second Class 2b, 2c, and 2d (cooking/tools), (c) Second Class 3a and 3d (navigation), (d) First Class 3a, 3b, 3c, and 3d (tools), (e) First Class 4a and 4b (navigation), (f) Second Class 6a and 6b (first aid), (g) First Class 7a and 7b (first aid), (h) Three requirements from one of the required Eagle merit badges, as approved by your Scoutmaster." },
+    { id: '5', text: 'While a Star Scout, serve actively in your troop for six months in one or more of the following troop positions of responsibility (or carry out a Scoutmaster-approved leadership project to help the troop): Patrol leader, assistant senior patrol leader, senior patrol leader, troop guide, Order of the Arrow troop representative, den chief, scribe, librarian, historian, quartermaster, bugler, junior assistant Scoutmaster, chaplain aide, instructor, webmaster, or outdoor ethics guide.' },
+    { id: '6', text: "While a Star Scout, use the Teaching EDGE method to teach another Scout (preferably younger than you) the skills from ONE of the following choices, so that the Scout is prepared to pass those requirements to their Scoutmaster's satisfaction: (a) Tenderfoot 4a and 4b, (b) Second Class 2b, 2c, and 2d, (c) Second Class 3a and 3d, (d) First Class 3a, 3b, 3c, and 3d, (e) First Class 4a and 4b, (f) Second Class 6a and 6b, (g) First Class 7a and 7b, (h) Three requirements from one of the required Eagle merit badges, as approved by your Scoutmaster." },
     { id: '7', text: 'While a Star Scout, participate in a Scoutmaster conference.' },
     { id: '8', text: 'Successfully complete your board of review for the Life rank.' },
   ],
@@ -160,32 +169,228 @@ const requirements = {
   ],
 }
 
+function daysLeft(startDateStr, months) {
+  if (!startDateStr) return null
+  const start = new Date(startDateStr)
+  const end = new Date(start)
+  end.setMonth(end.getMonth() + months)
+  const diff = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24))
+  return diff
+}
+
 function RankTracker() {
-  const [currentRank, setCurrentRank] = useState(null)
-  const [completed, setCompleted] = useState({})
+  const [currentRank, setCurrentRank] = useState(() => localStorage.getItem('sp_rank') || null)
+  const [completed, setCompleted] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sp_completed') || '{}') } catch { return {} }
+  })
+  const [notes, setNotes] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sp_notes') || '{}') } catch { return {} }
+  })
+  const [startDates, setStartDates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sp_startdates') || '{}') } catch { return {} }
+  })
+  const [filterIncomplete, setFilterIncomplete] = useState(false)
+  const [openNote, setOpenNote] = useState(null)
+  const [collapsedRanks, setCollapsedRanks] = useState({})
+  const [dismissedCelebration, setDismissedCelebration] = useState(false)
+
+  useEffect(() => { localStorage.setItem('sp_rank', currentRank || '') }, [currentRank])
+  useEffect(() => { localStorage.setItem('sp_completed', JSON.stringify(completed)) }, [completed])
+  useEffect(() => { localStorage.setItem('sp_notes', JSON.stringify(notes)) }, [notes])
+  useEffect(() => { localStorage.setItem('sp_startdates', JSON.stringify(startDates)) }, [startDates])
 
   const rankIndex = ranks.indexOf(currentRank)
   const currentReqs = currentRank ? requirements[currentRank] : []
   const completedCount = currentReqs.filter(r => completed[r.id + currentRank]).length
+  const allDone = currentReqs.length > 0 && completedCount === currentReqs.length
   const rankProgress = currentRank ? (rankIndex / (ranks.length - 1)) * 100 : 0
   const reqProgress = currentReqs.length > 0 ? (completedCount / currentReqs.length) * (100 / (ranks.length - 1)) : 0
   const totalProgress = Math.min(100, Math.round(rankProgress + reqProgress))
+  const upcomingRanks = currentRank ? ranks.slice(rankIndex + 1) : []
 
-  const toggleReq = (id) => {
-    const key = id + currentRank
+  const toggleReq = (rank, id) => {
+    const timeKey = rank + id
+    const timeReq = timeRequirements[timeKey]
+    if (timeReq) {
+      const days = daysLeft(startDates[timeKey], timeReq.months)
+      if (days === null || days > 0) return
+    }
+    const key = id + rank
     setCompleted(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const handleNoteChange = (rank, id, value) => {
+    setNotes(prev => ({ ...prev, [id + rank]: value }))
+  }
+
+  const handleStartDate = (rank, id, value) => {
+    setStartDates(prev => ({ ...prev, [rank + id]: value }))
+  }
+
+  const renderRequirement = (req, rank, dimmed = false) => {
+    const key = req.id + rank
+    const done = !!completed[key]
+    const timeKey = rank + req.id
+    const timeReq = timeRequirements[timeKey]
+    const days = timeReq ? daysLeft(startDates[timeKey], timeReq.months) : null
+    const timeLocked = timeReq && (days === null || days > 0)
+    const noteOpen = openNote === key
+
+    if (filterIncomplete && done) return null
+
+    return (
+      <div key={key} style={{ marginBottom: '8px', opacity: dimmed ? 0.65 : 1 }}>
+        <div
+          onClick={() => !timeLocked && toggleReq(rank, req.id)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '14px',
+            padding: '14px 16px',
+            backgroundColor: done ? '#eafaf1' : timeLocked ? '#fafafa' : 'white',
+            borderRadius: noteOpen ? '12px 12px 0 0' : '12px',
+            cursor: timeLocked ? 'not-allowed' : 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            border: done ? '1.5px solid #2ecc71' : timeLocked ? '1.5px solid #f0c080' : '1.5px solid transparent',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <div style={{
+            minWidth: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            backgroundColor: done ? '#2ecc71' : timeLocked ? '#f0c080' : '#ddd',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            marginTop: '1px'
+          }}>
+            {done
+              ? <span style={{ color: 'white', fontSize: '13px' }}>✓</span>
+              : timeLocked
+              ? <span style={{ fontSize: '13px' }}>⏳</span>
+              : <span style={{ color: '#999', fontSize: '11px', fontWeight: '700' }}>{req.id}</span>
+            }
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '800',
+              color: done ? '#999' : '#2c3e50',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'block',
+              marginBottom: '3px'
+            }}>
+              Req {req.id}
+            </span>
+            <p style={{
+              fontSize: '14px',
+              lineHeight: '1.6',
+              textDecoration: done ? 'line-through' : 'none',
+              color: done ? '#999' : '#2c3e50',
+              margin: 0
+            }}>
+              {req.text}
+            </p>
+
+            {timeLocked && (
+              <p style={{ fontSize: '12px', color: '#e67e22', fontWeight: '700', margin: '6px 0 0' }}>
+                Set a start date below — you can't check this off until the time requirement is met.
+              </p>
+            )}
+
+            {timeReq && (
+              <div style={{ marginTop: '10px' }} onClick={e => e.stopPropagation()}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: '#666', display: 'block', marginBottom: '4px' }}>
+                  Start date — {timeReq.label}:
+                </label>
+                <input
+                  type="date"
+                  value={startDates[timeKey] || ''}
+                  onChange={e => handleStartDate(rank, req.id, e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #ddd',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontSize: '13px'
+                  }}
+                />
+                {days !== null && (
+                  <span style={{
+                    marginLeft: '10px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: days <= 0 ? '#2ecc71' : days <= 30 ? '#e67e22' : '#3498db'
+                  }}>
+                    {days <= 0 ? '✓ Time requirement met' : `${days} days remaining`}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={e => { e.stopPropagation(); setOpenNote(noteOpen ? null : key) }}
+            title="Add note"
+            style={{
+              background: noteOpen ? '#e8f4fd' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '4px 8px',
+              borderRadius: '8px',
+              flexShrink: 0,
+              color: notes[key] ? '#3498db' : '#bbb'
+            }}
+          >
+            📝
+          </button>
+        </div>
+
+        {noteOpen && (
+          <div style={{
+            backgroundColor: '#f8fbff',
+            border: '1.5px solid #d0e8f8',
+            borderTop: 'none',
+            borderRadius: '0 0 12px 12px',
+            padding: '12px 16px'
+          }}>
+            <textarea
+              value={notes[key] || ''}
+              onChange={e => handleNoteChange(rank, req.id, e.target.value)}
+              placeholder="Add a note — when you did this, who signed off, what you still need..."
+              style={{
+                width: '100%',
+                minHeight: '80px',
+                padding: '8px',
+                borderRadius: '8px',
+                border: '1.5px solid #ddd',
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: '13px',
+                resize: 'vertical',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
     <div style={{ padding: '30px 20px', maxWidth: '720px', margin: '0 auto' }}>
       <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>Rank Tracker</h1>
-      <p style={{ color: '#666', marginBottom: '24px' }}>Select your current rank</p>
+      <p style={{ color: '#666', marginBottom: '24px' }}>Select the rank you are currently working toward</p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '30px' }}>
         {ranks.map(rank => (
           <button
             key={rank}
-            onClick={() => setCurrentRank(rank)}
+            onClick={() => { setCurrentRank(rank); setDismissedCelebration(false) }}
             style={{
               padding: '10px 20px',
               backgroundColor: currentRank === rank ? '#2c3e50' : 'white',
@@ -225,74 +430,112 @@ function RankTracker() {
             </p>
           </div>
 
-          <h2 style={{ fontWeight: '800', fontSize: '20px', marginBottom: '16px' }}>
-            {currentRank} Requirements
-          </h2>
-
-          {currentReqs.map(req => {
-            const key = req.id + currentRank
-            const done = !!completed[key]
-            return (
-              <div
-                key={req.id}
-                onClick={() => toggleReq(req.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '14px',
-                  padding: '14px 16px',
-                  backgroundColor: done ? '#eafaf1' : 'white',
-                  borderRadius: '12px',
-                  marginBottom: '8px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  border: done ? '1.5px solid #2ecc71' : '1.5px solid transparent',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{
-                  minWidth: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  backgroundColor: done ? '#2ecc71' : '#ddd',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '1px'
-                }}>
-                  {done
-                    ? <span style={{ color: 'white', fontSize: '13px' }}>✓</span>
-                    : <span style={{ color: '#999', fontSize: '11px', fontWeight: '700' }}>{req.id}</span>
-                  }
+          {allDone && !dismissedCelebration && (
+            <div style={{
+              backgroundColor: '#2ecc71',
+              color: 'white',
+              borderRadius: '16px',
+              padding: '20px 24px',
+              marginBottom: '30px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '22px', fontWeight: '800', marginBottom: '4px' }}>
+                  🎉 {currentRank} complete!
                 </div>
-                <div>
-                  {!done && (
-                    <span style={{
-                      fontSize: '11px',
-                      fontWeight: '800',
-                      color: '#2c3e50',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '3px'
-                    }}>
-                      Req {req.id}
-                    </span>
-                  )}
-                  <p style={{
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    textDecoration: done ? 'line-through' : 'none',
-                    color: done ? '#999' : '#2c3e50',
-                    margin: 0
-                  }}>
-                    {req.text}
-                  </p>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                  {currentRank === 'Eagle'
+                    ? 'Congratulations, Eagle Scout!'
+                    : `Time to start working toward ${ranks[rankIndex + 1]}.`}
                 </div>
               </div>
-            )
-          })}
+              <button
+                onClick={() => setDismissedCelebration(true)}
+                style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '22px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontWeight: '800', fontSize: '20px', margin: 0 }}>
+              {currentRank} Requirements
+            </h2>
+            <button
+              onClick={() => setFilterIncomplete(f => !f)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: filterIncomplete ? '#2c3e50' : 'white',
+                color: filterIncomplete ? 'white' : '#2c3e50',
+                border: '2px solid #2c3e50',
+                borderRadius: '20px',
+                cursor: 'pointer',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: '700',
+                fontSize: '13px'
+              }}
+            >
+              {filterIncomplete ? 'Show all' : 'Incomplete only'}
+            </button>
+          </div>
+
+          {currentReqs.map(req => renderRequirement(req, currentRank))}
+
+          {upcomingRanks.length > 0 && (
+            <div style={{ marginTop: '40px' }}>
+              <h2 style={{ fontWeight: '800', fontSize: '20px', marginBottom: '6px', color: '#2c3e50' }}>
+                Upcoming Ranks
+              </h2>
+              <p style={{ color: '#999', fontSize: '13px', marginBottom: '16px' }}>
+                Preview requirements for future ranks and start checking things off early.
+              </p>
+              {upcomingRanks.map(rank => {
+                const reqs = requirements[rank]
+                const doneCount = reqs.filter(r => completed[r.id + rank]).length
+                const isCollapsed = collapsedRanks[rank] !== false
+                return (
+                  <div key={rank} style={{ marginBottom: '16px' }}>
+                    <button
+                      onClick={() => setCollapsedRanks(prev => ({ ...prev, [rank]: !isCollapsed }))}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '14px 16px',
+                        backgroundColor: 'white',
+                        border: '1.5px solid #ddd',
+                        borderRadius: isCollapsed ? '12px' : '12px 12px 0 0',
+                        cursor: 'pointer',
+                        fontFamily: 'Nunito, sans-serif',
+                        fontWeight: '700',
+                        fontSize: '15px',
+                        color: '#2c3e50'
+                      }}
+                    >
+                      <span>{rank}</span>
+                      <span style={{ fontSize: '13px', color: doneCount > 0 ? '#3498db' : '#999' }}>
+                        {doneCount}/{reqs.length} {isCollapsed ? '▼' : '▲'}
+                      </span>
+                    </button>
+                    {!isCollapsed && (
+                      <div style={{
+                        border: '1.5px solid #ddd',
+                        borderTop: 'none',
+                        borderRadius: '0 0 12px 12px',
+                        padding: '16px'
+                      }}>
+                        {reqs.map(req => renderRequirement(req, rank, true))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
     </div>
