@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 function Dashboard() {
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -27,7 +29,7 @@ function Dashboard() {
         }}>
           Know where you are. Know what's next. Get to Eagle.
         </p>
-        <a href="/rank-tracker" style={{
+        <Link to="/rank-tracker" style={{
           backgroundColor: 'white',
           color: '#1a2a3a',
           padding: '14px 32px',
@@ -39,7 +41,7 @@ function Dashboard() {
           boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
         }}>
           Get Started →
-        </a>
+        </Link>
       </div>
 
       {/* Feature Cards */}
@@ -64,27 +66,28 @@ function Dashboard() {
           gap: '20px'
         }}>
           {[
-            { emoji: '🏅', title: 'Rank Tracker', desc: 'Check off requirements and see your progress toward the next rank.', href: '/rank-tracker' },
-            { emoji: '🎖️', title: 'Merit Badges', desc: 'Track required and elective badges. See exactly how many you need.', href: '/badges' },
-            { emoji: '🤖', title: 'AI Advisor', desc: 'Get personalized suggestions on the easiest requirements to knock out next.', href: '/advisor' },
-            { emoji: '🦅', title: 'Eagle Roadmap', desc: 'A full timeline from your current rank to Eagle with every step laid out.', href: '/eagle' },
-            { emoji: '🏕️', title: 'Activity Log', desc: 'Log campouts, hikes, and service hours. Generate a printable summary.', href: '/log' },
-            { emoji: '👥', title: 'Leader Tools', desc: 'Export your progress as a PDF to share with your Scoutmaster.', href: '/leader' },
+            { emoji: '🏅', title: 'Rank Tracker', desc: 'Check off requirements and see your progress toward the next rank.', to: '/rank-tracker' },
+            { emoji: '🎖️', title: 'Merit Badges', desc: 'Track required and elective badges. See exactly how many you need.', to: '/badges' },
+            { emoji: '🤖', title: 'AI Advisor', desc: 'Get personalized suggestions on the easiest requirements to knock out next.', to: '/advisor' },
+            { emoji: '🦅', title: 'Eagle Roadmap', desc: 'A full timeline from your current rank to Eagle with every step laid out.', to: '/eagle' },
+            { emoji: '🏕️', title: 'Activity Log', desc: 'Log campouts, hikes, and service hours. Generate a printable summary.', to: '/log' },
+            { emoji: '👥', title: 'Leader Tools', desc: 'Export your progress as a PDF to share with your Scoutmaster.', to: '/leader' },
           ].map(card => (
-            <a
+            <Link
               key={card.title}
-              href={card.href}
+              to={card.to}
               style={{ textDecoration: 'none' }}
             >
-              <div style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                padding: '28px 24px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
-                cursor: 'pointer',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                height: '100%'
-              }}
+              <div
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '28px 24px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  height: '100%'
+                }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-4px)'
                   e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'
@@ -98,7 +101,7 @@ function Dashboard() {
                 <h3 style={{ fontWeight: '800', fontSize: '18px', marginBottom: '8px', color: '#1a2a3a' }}>{card.title}</h3>
                 <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.6' }}>{card.desc}</p>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
