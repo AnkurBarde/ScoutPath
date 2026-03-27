@@ -258,7 +258,7 @@ export default function LeaderTools() {
             </label>
             <input
               type="text"
-              placeholder="e.g. Troop 42"
+              placeholder="e.g. Troop 566"
               value={troopNumber}
               onChange={e => setTroopNumber(e.target.value)}
               style={{
